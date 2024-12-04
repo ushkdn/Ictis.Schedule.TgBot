@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35527.113
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ictis.Schedule.Data", "ictis.schedule.data\Ictis.Schedule.Data.csproj", "{D806C7D0-08E3-4A35-8555-4635A2BE9515}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ictis.Schedule.Core", "ictis.schedule.core\Ictis.Schedule.Core.csproj", "{D50339ED-ACCA-4713-ACC6-1146262AFDF8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D806C7D0-08E3-4A35-8555-4635A2BE9515}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D806C7D0-08E3-4A35-8555-4635A2BE9515}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D806C7D0-08E3-4A35-8555-4635A2BE9515}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D806C7D0-08E3-4A35-8555-4635A2BE9515}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D50339ED-ACCA-4713-ACC6-1146262AFDF8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D50339ED-ACCA-4713-ACC6-1146262AFDF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D50339ED-ACCA-4713-ACC6-1146262AFDF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D50339ED-ACCA-4713-ACC6-1146262AFDF8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
