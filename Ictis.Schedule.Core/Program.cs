@@ -4,6 +4,9 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types.ReplyMarkups;
 using ictis.schedule.core;
+using System.Text.Json.Serialization;
+using Ictis.Schedule.Data;
+using System.Text.Json;
 
 namespace ictis.schedule.tgbot;
 
@@ -25,8 +28,20 @@ internal class Program
         }
     }
 
+    public static async Task<ScheduleModel> GetSchedule(string key)
+    {
+        var client = new HttpClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, "https://webictis.sfedu.ru/schedule-api/?query=" + key.Trim());
+        var response = await client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var jsondata = (await response.Content.ReadAsStringAsync());
+        return parsedData;
+    }
+
     private static async Task GetMe(string tgApiKey)
     {
+        var smth = await GetSchedule("ктбо3-7");
+
         using var cts = new CancellationTokenSource();
         var bot = new TelegramBotClient(tgApiKey, cancellationToken: cts.Token);
         var me = await bot.GetMe();
@@ -50,6 +65,7 @@ internal class Program
             {
                 await bot.SendMessage(msg.Chat, "Привет! Выбери опцию для получения расписания",
                     replyMarkup: new InlineKeyboardMarkup().AddButtons("Группа", "Преподаватель"));
+
                 //await bot.SendMessage(msg.Chat, "Привет! Выбери временной период для получения расписания",
                 //    replyMarkup: new InlineKeyboardMarkup().AddButtons("День", "Неделя", "Максимальное на данный момент"));
             }
