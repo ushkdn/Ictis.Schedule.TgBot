@@ -11,6 +11,10 @@ namespace ictis.schedule.tgbot;
 
 internal class Program
 {
+    private static Dictionary<long, string> UserDates = new Dictionary<long, string>();
+    private static Dictionary<long, string> UserChoices = new Dictionary<long, string>();
+    private static Dictionary<long, string> UserGroups = new Dictionary<long, string>();
+
     private static async Task Main(string[] args)
     {
         var config = DotEnvLoad.Load();
@@ -19,7 +23,7 @@ internal class Program
         {
             var tgBotApiKey = config["tgBotApiKey"]
                 ?? throw new ArgumentNullException("Unable to configure tg-bot with specified key.");
-            await GetMe(config["tgBotApiKey"]);
+            await GetMe();
         }
         catch (Exception ex)
         {
@@ -27,7 +31,7 @@ internal class Program
         }
     }
 
-    public static async Task<IctisScheduleApiResponse> GetSchedule(string key)
+    public static async Task<ScheduleWeekModel> GetSchedule(string key)
     {
         var client = new HttpClient();
         var request = new HttpRequestMessage(HttpMethod.Get, "https://webictis.sfedu.ru/schedule-api/?query=" + key.Trim());
@@ -35,8 +39,7 @@ internal class Program
         response.EnsureSuccessStatusCode();
         var jsondata = await response.Content.ReadAsStringAsync();
         var parsedData = JsonConvert.DeserializeObject<IctisScheduleApiResponse>(jsondata);
-        GetWeekSchedule(parsedData.Table);
-        return null;
+        return GetWeekSchedule(parsedData.Table);
     }
 
     private static ScheduleWeekModel GetWeekSchedule(ScheduleTable scheduleTable)
@@ -59,9 +62,9 @@ internal class Program
                 {
                     var timePeriod = new TimePeriodModel
                     {
-                        Number = scheduleTable.Table[0, j], 
-                        Time = scheduleTable.Table[1, j],   
-                        Name = scheduleTable.Table[i, j]   
+                        Number = scheduleTable.Table[0, j],
+                        Time = scheduleTable.Table[1, j],
+                        Name = scheduleTable.Table[i, j]
                     };
 
                     timePeriods.Add(timePeriod);
@@ -69,25 +72,22 @@ internal class Program
             }
             scheduleDayList.Add(new ScheduleDayModel
             {
-                Date = scheduleTable.Table[i,0],
+                Date = scheduleTable.Table[i, 0],
                 TimePeriods = timePeriods
             });
-
-
         }
+
         weekScheduleMeta.DaySchedules = scheduleDayList;
-        var test = weekScheduleMeta;
 
         return weekScheduleMeta;
     }
 
     private static async Task GetMe(string tgApiKey)
     {
-        var smth = await GetSchedule("ктбо3-7");
-
         using var cts = new CancellationTokenSource();
         var bot = new TelegramBotClient(tgApiKey, cancellationToken: cts.Token);
         var me = await bot.GetMe();
+
         bot.OnMessage += OnMessage;
         bot.OnError += OnError;
         bot.OnUpdate += OnUpdate;
@@ -101,25 +101,93 @@ internal class Program
             Console.WriteLine(ex);
         }
 
-        // method that handle messages received by the bot:
         async Task OnMessage(Message msg, UpdateType type)
         {
             if (msg.Text == "/start")
             {
                 await bot.SendMessage(msg.Chat, "Привет! Выбери опцию для получения расписания",
-                    replyMarkup: new InlineKeyboardMarkup().AddButtons("Группа", "Преподаватель"));
+                    replyMarkup: new InlineKeyboardMarkup().AddButtons("День", "Неделя"));
+            }
+            else if (UserChoices.ContainsKey(msg.Chat.Id))
+            {
+                // Обработка введенной группы или преподавателя
+                UserGroups[msg.Chat.Id] = msg.Text; // Сохраняем номер группы или фамилию преподавателя
 
-                //await bot.SendMessage(msg.Chat, "Привет! Выбери временной период для получения расписания",
-                //    replyMarkup: new InlineKeyboardMarkup().AddButtons("День", "Неделя", "Максимальное на данный момент"));
+                if (UserChoices[msg.Chat.Id] == "День")
+                {
+                    // Запрашиваем дату
+                    await bot.SendMessage(msg.Chat, "Введите дату (например, 01 или 20):");
+                }
+                else if (UserChoices[msg.Chat.Id] == "Неделя")
+                {
+                    // Получаем расписание на неделю сразу
+                    var weekSchedule = await GetSchedule(UserGroups[msg.Chat.Id]);
+                    var responseString =
+                        $"{weekSchedule.Type}  {weekSchedule.SearchName}: \n" +
+                        $"Неделя: {weekSchedule.Week}\n";
+
+                    foreach (var day in weekSchedule.DaySchedules)
+                    {
+                        responseString += $"{day.Date}\n\n";
+                        foreach (var timePeriod in day.TimePeriods)
+                        {
+                            responseString +=
+                            $"{timePeriod.Time} : {timePeriod.Name}\n\n";
+                        }
+                    }
+                    await bot.SendMessage(msg.Chat, $"{weekSchedule.SearchName} + {weekSchedule.Type}: \n" + responseString);
+
+                    // Очистка данных после обработки
+                    UserChoices.Remove(msg.Chat.Id);
+                    UserGroups.Remove(msg.Chat.Id);
+                }
+            }
+            else if (UserDates.ContainsKey(msg.Chat.Id))
+            {
+                // Обработка введенной даты
+                UserDates[msg.Chat.Id] = msg.Text; // Сохраняем введенную дату
+                string groupNumber = UserGroups[msg.Chat.Id]; // Получаем номер группы
+
+                // Получаем расписание на день
+                var daySchedule = await GetDaySchedule(UserDates[msg.Chat.Id], groupNumber);
+                await bot.SendMessage(msg.Chat, $"Расписание на {UserDates[msg.Chat.Id]} для группы {groupNumber}: {daySchedule}");
+
+                // Очистка данных после обработки
+                UserDates.Remove(msg.Chat.Id);
+                UserChoices.Remove(msg.Chat.Id);
+                UserGroups.Remove(msg.Chat.Id);
+            }
+            else if (msg.Text.StartsWith("Группа: "))
+            {
+                var groupNumber = msg.Text.Substring(8); // Извлечение номера группы
+                UserGroups[msg.Chat.Id] = groupNumber; // Сохраняем номер группы
+
+                // Запрашиваем дату или фамилию преподавателя в зависимости от выбора
+                await bot.SendMessage(msg.Chat, "Введите номер вашей группы или фамилию преподавателя:");
             }
         }
+
         async Task OnUpdate(Update update)
         {
-            if (update is { CallbackQuery: { } query })
+            if (update.CallbackQuery is not null)
             {
-                await bot.AnswerCallbackQuery(query.Id, $"You piсked {query.Data}");
-                await bot.SendMessage(query.Message!.Chat, $"User {query.From} clicked on {query.Data}");
+                var query = update.CallbackQuery;
+
+                if (query.Data == "День" || query.Data == "Неделя")
+                {
+                    await bot.SendMessage(query.Message.Chat, "Введите номер вашей группы:");
+                    UserChoices[query.Message.Chat.Id] = query.Data; // Сохраняем выбор пользователя
+                    UserDates[query.Message.Chat.Id] = ""; // Инициализация для даты
+                    UserGroups[query.Message.Chat.Id] = ""; // Инициализация для группы
+                }
             }
         }
+    }
+
+    public static async Task<ScheduleDayModel> GetDaySchedule(string date, string groupNumber)
+    {
+        // Здесь должна быть ваша логика для получения расписания на день по дате и номеру группы.
+
+        return new ScheduleDayModel(); // Верните полученное расписание.
     }
 }
