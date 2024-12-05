@@ -50,22 +50,18 @@ internal class Program
 
         var scheduleDayList = new List<ScheduleDayModel>();
 
-        // Проходим по строкам, начиная с третьей (индекс 2)
-        for (int i = 2; i < scheduleTable.Table.GetLength(0); i++) // GetLength(0) возвращает количество строк
+        for (int i = 2; i < scheduleTable.Table.GetLength(0); i++)
         {
             var timePeriods = new List<TimePeriodModel>();
-
-            // Проходим по столбцам, начиная с первого (индекс 1), чтобы пропустить день недели
-            for (int j = 1; j < scheduleTable.Table.GetLength(1); j++) // GetLength(1) возвращает количество столбцов
+            for (int j = 1; j < scheduleTable.Table.GetLength(1); j++)
             {
-                if (!string.IsNullOrWhiteSpace(scheduleTable.Table[i, j])) // Проверяем на пустую строку
+                if (!string.IsNullOrWhiteSpace(scheduleTable.Table[i, j]))
                 {
-                    // Создаем новый объект TimePeriodModel
                     var timePeriod = new TimePeriodModel
                     {
-                        Number = scheduleTable.Table[0, j], // Пара
-                        Time = scheduleTable.Table[1, j],   // Время
-                        Name = scheduleTable.Table[i, j]     // Название пары
+                        Number = scheduleTable.Table[0, j], 
+                        Time = scheduleTable.Table[1, j],   
+                        Name = scheduleTable.Table[i, j]   
                     };
 
                     timePeriods.Add(timePeriod);
@@ -73,12 +69,16 @@ internal class Program
             }
             scheduleDayList.Add(new ScheduleDayModel
             {
-                Date = scheduleTable.Table[0]
-            })
-        }
-        var test = timePeriods;
+                Date = scheduleTable.Table[i,0],
+                TimePeriods = timePeriods
+            });
 
-        return null;
+
+        }
+        weekScheduleMeta.DaySchedules = scheduleDayList;
+        var test = weekScheduleMeta;
+
+        return weekScheduleMeta;
     }
 
     private static async Task GetMe(string tgApiKey)
