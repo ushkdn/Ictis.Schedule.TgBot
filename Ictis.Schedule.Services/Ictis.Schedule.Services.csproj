@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -9,12 +9,10 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Telegram.Bot" Version="22.1.3" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\ictis.schedule.data\Ictis.Schedule.Data.csproj" />
-    <ProjectReference Include="..\Ictis.Schedule.Services\Ictis.Schedule.Services.csproj" />
   </ItemGroup>
 
 </Project>
