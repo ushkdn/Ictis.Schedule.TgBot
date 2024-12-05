@@ -1,12 +1,11 @@
-﻿using Telegram.Bot;
-using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types;
-using Telegram.Bot.Polling;
-using Telegram.Bot.Types.ReplyMarkups;
-using ictis.schedule.core;
-using System.Text.Json.Serialization;
+﻿using ictis.schedule.core;
 using Ictis.Schedule.Data;
-using System.Text.Json;
+using Newtonsoft.Json;
+using Telegram.Bot;
+using Telegram.Bot.Polling;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace ictis.schedule.tgbot;
 
@@ -28,14 +27,58 @@ internal class Program
         }
     }
 
-    public static async Task<ScheduleModel> GetSchedule(string key)
+    public static async Task<IctisScheduleApiResponse> GetSchedule(string key)
     {
         var client = new HttpClient();
         var request = new HttpRequestMessage(HttpMethod.Get, "https://webictis.sfedu.ru/schedule-api/?query=" + key.Trim());
         var response = await client.SendAsync(request);
         response.EnsureSuccessStatusCode();
-        var jsondata = (await response.Content.ReadAsStringAsync());
-        return parsedData;
+        var jsondata = await response.Content.ReadAsStringAsync();
+        var parsedData = JsonConvert.DeserializeObject<IctisScheduleApiResponse>(jsondata);
+        GetWeekSchedule(parsedData.Table);
+        return null;
+    }
+
+    private static ScheduleWeekModel GetWeekSchedule(ScheduleTable scheduleTable)
+    {
+        var weekScheduleMeta = new ScheduleWeekModel
+        {
+            Type = scheduleTable.Type,
+            Week = scheduleTable.Week,
+            SearchName = scheduleTable.Name,
+        };
+
+        var scheduleDayList = new List<ScheduleDayModel>();
+
+        // Проходим по строкам, начиная с третьей (индекс 2)
+        for (int i = 2; i < scheduleTable.Table.GetLength(0); i++) // GetLength(0) возвращает количество строк
+        {
+            var timePeriods = new List<TimePeriodModel>();
+
+            // Проходим по столбцам, начиная с первого (индекс 1), чтобы пропустить день недели
+            for (int j = 1; j < scheduleTable.Table.GetLength(1); j++) // GetLength(1) возвращает количество столбцов
+            {
+                if (!string.IsNullOrWhiteSpace(scheduleTable.Table[i, j])) // Проверяем на пустую строку
+                {
+                    // Создаем новый объект TimePeriodModel
+                    var timePeriod = new TimePeriodModel
+                    {
+                        Number = scheduleTable.Table[0, j], // Пара
+                        Time = scheduleTable.Table[1, j],   // Время
+                        Name = scheduleTable.Table[i, j]     // Название пары
+                    };
+
+                    timePeriods.Add(timePeriod);
+                }
+            }
+            scheduleDayList.Add(new ScheduleDayModel
+            {
+                Date = scheduleTable.Table[0]
+            })
+        }
+        var test = timePeriods;
+
+        return null;
     }
 
     private static async Task GetMe(string tgApiKey)
