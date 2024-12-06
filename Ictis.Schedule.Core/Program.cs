@@ -24,11 +24,10 @@ public class TelegramService : ITelegramService
 
     public TelegramService(IConfiguration configuration, IScheduleService scheduleService)
     {
-        botApiKey = configuration["tgApiKey"]
+        botApiKey = configuration["tgBotApiKey"]
             ?? throw new ArgumentException("Unable to find bot api key configuration");
 
         cancellationTokenSource = new CancellationTokenSource();
-
         bot = new TelegramBotClient(botApiKey, cancellationToken: cancellationTokenSource.Token);
 
         this.scheduleService = scheduleService;
@@ -129,7 +128,6 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
-        var config = DotEnvLoad.Load();
         var serviceCollection = RegisterServices();
         var telegramService = serviceCollection.GetRequiredService<ITelegramService>();
         try
@@ -144,7 +142,9 @@ internal class Program
 
     private static ServiceProvider RegisterServices()
     {
+        var config = DotEnvLoad.Load();
         var serviceProvider = new ServiceCollection()
+            .AddSingleton<IConfiguration>(config)
             .AddScoped<IScheduleService, ScheduleService>()
             .AddScoped<ITelegramService, TelegramService>()
             .BuildServiceProvider();
