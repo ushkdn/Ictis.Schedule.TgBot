@@ -8,7 +8,6 @@ public static class DotEnvLoad
     {
         var projectDirectory = AppContext.BaseDirectory;
 
-        // Поднимаемся на три уровня вверх, чтобы получить директорию решения
         var solutionDir = TryGetSolutionDirectoryInfo();
         var dotEnvPath = Path.Combine(solutionDir.FullName, ".env");
 
