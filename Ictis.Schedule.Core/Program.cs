@@ -1,5 +1,7 @@
 ﻿using ictis.schedule.core;
 using Ictis.Schedule.Services.ScheduleService;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -8,17 +10,36 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace ictis.schedule.tgbot;
 
-public static class TelegramB
+public interface ITelegramService
 {
-    public static Dictionary<long, string> UserDates = new Dictionary<long, string>();
-    public static Dictionary<long, string> UserChoices = new Dictionary<long, string>();
-    public static Dictionary<long, string> UserGroups = new Dictionary<long, string>();
+    Task GetMe();
+}
 
-    public static async Task GetMe(string tgApiKey)
+public class TelegramService : ITelegramService
+{
+    private readonly string botApiKey;
+    private readonly CancellationTokenSource cancellationTokenSource;
+    private readonly TelegramBotClient bot;
+    private readonly IScheduleService scheduleService;
+
+    public TelegramService(IConfiguration configuration, IScheduleService scheduleService)
     {
-        IScheduleService scheduleService = new ScheduleService();
-        using var cts = new CancellationTokenSource();
-        var bot = new TelegramBotClient(tgApiKey, cancellationToken: cts.Token);
+        botApiKey = configuration["tgApiKey"]
+            ?? throw new ArgumentException("Unable to find bot api key configuration");
+
+        cancellationTokenSource = new CancellationTokenSource();
+
+        bot = new TelegramBotClient(botApiKey, cancellationToken: cancellationTokenSource.Token);
+
+        this.scheduleService = scheduleService;
+    }
+
+    public Dictionary<long, string> UserDates = new Dictionary<long, string>();
+    public Dictionary<long, string> UserChoices = new Dictionary<long, string>();
+    public Dictionary<long, string> UserGroups = new Dictionary<long, string>();
+
+    public async Task GetMe()
+    {
         var me = await bot.GetMe();
 
         bot.OnMessage += OnMessage;
@@ -27,7 +48,7 @@ public static class TelegramB
 
         Console.WriteLine($"@{me.Username} is running... Press Enter to terminate");
         Console.ReadLine();
-        cts.Cancel(); // stop the bot
+        cancellationTokenSource.Cancel(); // stop the bot
 
         async Task OnError(Exception ex, HandleErrorSource source)
         {
@@ -109,19 +130,24 @@ internal class Program
     private static async Task Main(string[] args)
     {
         var config = DotEnvLoad.Load();
-
+        var serviceCollection = RegisterServices();
+        var telegramService = serviceCollection.GetRequiredService<ITelegramService>();
         try
         {
-            var tgBotApiKey = config["tgBotApiKey"]
-                ?? throw new ArgumentException("Unable to configure tg-bot with specified key.");
-            var scheduleApiRoute = config["ictisScheduleApiRoute"]
-                ?? throw new ArgumentException("Unable to configure ictis schedule api route with specified key.");
-
-            await TelegramB.GetMe("");
+            await telegramService.GetMe();
         }
         catch (Exception ex)
         {
             Console.WriteLine(ex.Message);
         }
+    }
+
+    private static ServiceProvider RegisterServices()
+    {
+        var serviceProvider = new ServiceCollection()
+            .AddScoped<IScheduleService, ScheduleService>()
+            .AddScoped<ITelegramService, TelegramService>()
+            .BuildServiceProvider();
+        return serviceProvider;
     }
 }
